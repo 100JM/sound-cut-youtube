@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.tools
+.env*
+!.env.example
+*.md
+.dockerignore
+Dockerfile
+docker-compose.yml
+*.tsbuildinfo
