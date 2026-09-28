@@ -1,0 +1,27 @@
+appId: com.soundcut.desktop
+productName: Soundcut
+directories:
+  output: dist
+files:
+  - desktop/**/*
+  - package.json
+  - '!node_modules/**/*'
+extraResources:
+  - from: .desktop/tools
+    to: tools
+afterPack: scripts/after-pack.cjs
+asar: true
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: desktop/icon.png
+  signExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  artifactName: Soundcut-Setup-${version}.${ext}

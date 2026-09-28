@@ -1,5 +1,29 @@
 # Soundcut
 
+## Windows 설치 앱 (Docker 불필요)
+
+`dist/Soundcut-Setup-1.0.1.exe`를 실행해 설치한 뒤 바탕 화면의 Soundcut을 여세요.
+Node.js, Docker, FFmpeg를 별도로 설치할 필요가 없습니다. 인터넷 연결은 필요합니다.
+
+- 창의 X 버튼은 앱을 트레이로 숨깁니다. 트레이 아이콘을 더블 클릭하면 다시 열립니다.
+- 트레이 메뉴의 **Windows 로그인 시 자동 실행**을 체크하면 다음 로그인부터 백그라운드로 시작합니다.
+- 완전히 종료하려면 트레이 메뉴의 **종료**를 누르세요. 진행 중인 추출도 종료됩니다.
+- 컴퓨터가 절전 상태이면 추출 작업이 계속 진행되지 않습니다.
+- 앱은 이 컴퓨터의 로컬 주소에서만 서버를 실행합니다.
+- 실행 오류 로그: `%APPDATA%/Soundcut/desktop.log` (개발 실행은 앱 이름에 따라 경로가 다를 수 있습니다.)
+
+소스에서 설치 파일 만들기 (Windows x64, 빌드 도구 호환성을 위해 Node.js 22.12 이상 권장):
+
+```powershell
+npm ci
+npm run setup:tools
+npm run desktop:build
+```
+
+이미 `.tools`에 실행 도구 4개가 있으면 `setup:tools`는 생략할 수 있습니다.
+설치 전 개발 실행은 `npm run desktop:prepare` 후 `npm run desktop:start`입니다.
+설치 파일은 코드 서명이 적용되지 않은 로컬 빌드입니다.
+
 유튜브 영상의 시작·종료 시간을 선택해 MP3를 다운로드하는 Next.js + TypeScript 앱입니다.
 
 ## 실행 (Windows)

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseInput } from "@/lib/input";
 import { run } from "@/lib/process";
+import { isAllowedOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -16,7 +17,7 @@ function binary(name: string, env?: string) {
 }
 
 export async function POST(request: Request) {
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) return Response.json({ error: "허용되지 않은 요청입니다." }, { status: 403 });
+  if (!isAllowedOrigin(request, process.env.SOUNDCUT_ORIGIN)) return Response.json({ error: "허용되지 않은 요청입니다." }, { status: 403 });
   let input;
   try {
     const text = await request.text();
