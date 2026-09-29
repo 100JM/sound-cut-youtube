@@ -5,7 +5,11 @@ directories:
 files:
   - desktop/**/*
   - package.json
-  - '!node_modules/**/*'
+publish:
+  provider: github
+  owner: 100JM
+  repo: sound-cut-youtube
+  releaseType: release
 extraResources:
   - from: .desktop/tools
     to: tools

@@ -1,6 +1,6 @@
 {
   "name": "cut-youtube",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "private": true,
   "main": "desktop/main.cjs",
   "description": "Soundcut desktop audio clipper",
@@ -13,10 +13,11 @@
     "desktop:build": "npm run desktop:prepare && node scripts/build-desktop.cjs",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/input.test.ts tests/origin.test.ts",
+    "test": "tsx --test tests/input.test.ts tests/origin.test.ts tests/process.test.ts tests/cancel.test.ts tests/updates.test.cjs",
     "setup:tools": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-tools.ps1"
   },
   "dependencies": {
+    "electron-updater": "6.8.9",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

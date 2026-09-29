@@ -1,4 +1,6 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, dialog, utilityProcess } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, dialog, utilityProcess, ipcMain } = require('electron');
+const { randomBytes } = require('node:crypto');
+const { createUpdates } = require('./updates.cjs');
 const path = require('node:path');
 const fs = require('node:fs');
 const net = require('node:net');
@@ -36,12 +38,13 @@ async function start() {
     });
   });
   const url = `http://127.0.0.1:${port}`;
+  const desktopToken = randomBytes(32).toString('hex');
   const tools = path.join(root, 'tools');
   server = utilityProcess.fork(path.join(root, 'server', 'server.js'), [], {
     cwd: path.join(root, 'server'), stdio: 'pipe',
     env: { ...process.env, NODE_ENV: 'production', HOSTNAME: '127.0.0.1', PORT: String(port),
       YTDLP_PATH: path.join(tools, 'yt-dlp.exe'), FFMPEG_PATH: path.join(tools, 'ffmpeg.exe'),
-      DENO_PATH: path.join(tools, 'deno.exe'), NEXT_TELEMETRY_DISABLED: '1', SOUNDCUT_ORIGIN: url },
+      DENO_PATH: path.join(tools, 'deno.exe'), NEXT_TELEMETRY_DISABLED: '1', SOUNDCUT_ORIGIN: url, SOUNDCUT_DESKTOP_TOKEN: desktopToken },
   });
   server.stdout.pipe(log, { end: false });
   server.stderr.pipe(log, { end: false });
@@ -61,7 +64,7 @@ async function start() {
   if (!ready) throw new Error('로컬 서버를 시작하지 못했습니다.');
   window = new BrowserWindow({ width: 1180, height: 860, minWidth: 720, minHeight: 600,
     show: false, icon, autoHideMenuBar: true, title: 'Soundcut',
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: path.join(__dirname, 'preload.cjs') },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, target) => {
@@ -69,6 +72,45 @@ async function start() {
   });
   window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   window.on('close', event => { if (!quitting) { event.preventDefault(); window.hide(); } });
+  const { autoUpdater } = require('electron-updater');
+  autoUpdater.on('error', () => {
+    if (quitting && stopped) {
+      dialog.showErrorBox('Soundcut 업데이트 오류', '업데이트 설치를 시작하지 못했습니다. 현재 버전을 다시 실행합니다.');
+      app.relaunch();
+      app.exit(1);
+    }
+  });
+  const reserveUpdate = async action => {
+    const response = await fetch(`${url}/api/extract`, { method: 'PUT', headers: { authorization: `Bearer ${desktopToken}`, 'x-update-action': action }, signal: AbortSignal.timeout(5000) });
+    if (response.status === 409) return false;
+    if (!response.ok) throw new Error('Update reservation failed');
+    return true;
+  };
+  const updates = createUpdates({ updater: autoUpdater, version: app.getVersion(), enabled: app.isPackaged && !smoke,
+    notify: state => { if (!window.isDestroyed()) window.webContents.send('updates:changed', state); },
+    log: message => log.write(`[update] ${message}\n`),
+    reserve: () => reserveUpdate('reserve'), release: () => reserveUpdate('release'),
+    install: async () => {
+      if (!autoUpdater.installerPath || !fs.existsSync(autoUpdater.installerPath)) throw new Error('Downloaded installer is missing');
+      quitting = true;
+      try {
+        if (server?.pid) await new Promise((resolve, reject) => execFile('taskkill', ['/PID', String(server.pid), '/T', '/F'], { windowsHide: true }, error => error ? reject(error) : resolve()));
+        stopped = true;
+        autoUpdater.quitAndInstall(false, true);
+      } catch (error) { quitting = false; throw error; }
+    },
+  });
+  for (const [channel, handler] of [['updates:state', () => updates.getState()], ['updates:check', () => updates.check()], ['updates:install', () => updates.install()]]) {
+    ipcMain.handle(channel, event => {
+      if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== url) throw new Error('Untrusted update request');
+      return handler();
+    });
+  }
+  if (app.isPackaged && !smoke) {
+    const initial = setTimeout(() => void updates.check(), 10000);
+    const periodic = setInterval(() => void updates.check(), 6 * 60 * 60 * 1000);
+    app.once('before-quit', () => { clearTimeout(initial); clearInterval(periodic); });
+  }
   tray = new Tray(icon);
   tray.setToolTip('Soundcut — MP3 추출');
   const updateMenu = () => tray.setContextMenu(Menu.buildFromTemplate([
@@ -87,6 +129,8 @@ async function start() {
     }
     const title = await window.webContents.executeJavaScript('document.title');
     if (!title) throw new Error('화면 로딩 실패');
+    const updateState = await window.webContents.executeJavaScript('window.soundcutUpdates.getState()');
+    if (updateState.currentVersion !== app.getVersion() || updateState.status !== 'disabled') throw new Error('업데이트 IPC 검증 실패');
     const apiStatus = await window.webContents.executeJavaScript(`fetch('/api/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(response => response.status)`);
     if (apiStatus !== 400) throw new Error(`앱 화면 API 입력 검증 실패: ${apiStatus}`);
     const rejected = await fetch(`${url}/api/extract`, { method: 'POST', headers: { Origin: 'https://untrusted.example' }, body: '{}' });

@@ -1,0 +1,28 @@
+name: Windows release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run setup:tools
+      - run: npm test
+      - run: npm run desktop:build
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          gh release create "v$version" "dist/Soundcut-Setup-$version.exe" "dist/Soundcut-Setup-$version.exe.blockmap" "dist/latest.yml" --draft --title "Soundcut $version" --generate-notes --target "${{ github.sha }}"
