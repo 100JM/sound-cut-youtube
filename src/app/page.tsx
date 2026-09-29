@@ -64,7 +64,7 @@ export default function Home() {
     finally { setCancelling(false); }
   }
   return <div className="shell">
-    <header><a className="brand" href="/" aria-label="Soundcut 홈"><span className="brand-icon">♫</span> soundcut<span className="brand-dot">.</span></a><span className="header-note">작은 순간, 나만의 사운드</span><span className="version">BETA 1.1</span></header>
+    <header><a className="brand" href="/" aria-label="Soundcut 홈"><span className="brand-icon">♫</span> soundcut<span className="brand-dot">.</span></a><span className="header-note">작은 순간, 나만의 사운드</span><span className="version">BETA 1.2.1</span></header>
     <UpdateButton busy={busy || cancelling} />
     <main>
       <div className="eyebrow"><span /> YOUTUBE TO MP3</div>
